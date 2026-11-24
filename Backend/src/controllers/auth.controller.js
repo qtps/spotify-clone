@@ -98,7 +98,48 @@ async function loginUser(req, res) {
   });
 }
 
+async function getCurrentUser(req, res) {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const user = await userModel
+      .findById(decoded.id)
+      .select("username email role");
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    return res.status(200).json({ user });
+  } catch (error) {
+    console.error("Session lookup error:", error);
+    return res.status(500).json({ message: "Unable to load session" });
+  }
+}
+
+function logoutUser(req, res) {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "Strict",
+    path: "/",
+  });
+
+  return res.status(200).json({ message: "Logged out successfully" });
+}
+
 export {
   registerUser,
   loginUser,
+  getCurrentUser,
+  logoutUser,
 };

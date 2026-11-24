@@ -1,27 +1,7 @@
 import musicModel from "../models/music.model.js";
 import { uploadFile } from "../services/storage.service.js";
-import jwt from "jsonwebtoken";
 
 async function createMusic(req, res) {
-  const token = req.cookies?.token;
-
-  if (!token) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  let decoded;
-  try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET);
-  } catch (error) {
-    return res.status(401).json({ message: "You don't have access to create music" });
-  }
-
-  if (decoded.role !== "artist") {
-    return res
-      .status(403)
-      .json({ message: "You don't have permission to create music" });
-  }
-
   const title = req.body?.title;
   const file = req.file;
 
@@ -34,7 +14,7 @@ async function createMusic(req, res) {
     const music = await musicModel.create({
       title: title.trim(),
       uri: result.url,
-      artist: decoded.id,
+      artist: req.user.id,
     });
 
     return res.status(201).json({
@@ -52,8 +32,20 @@ async function createMusic(req, res) {
   }
 }
 
-export {
-  createMusic,
-};
+async function listMusic(req, res) {
+  try {
+    const music = await musicModel
+      .find()
+      .sort({ _id: -1 })
+      .populate("artist", "username");
+
+    return res.status(200).json({ music });
+  } catch (error) {
+    console.error("Music library error:", error);
+    return res.status(500).json({ message: "Unable to load music library" });
+  }
+}
+
+export { createMusic, listMusic };
 
 

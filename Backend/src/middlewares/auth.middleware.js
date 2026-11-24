@@ -1,22 +1,24 @@
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 
-async function authArtist (req, res, next) {
-    const token = req.body.token;
-    if (!token) {
-        return res.status(401).json({ message: "Unauthorized" });
+function authArtist(req, res, next) {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== "artist") {
+      return res
+        .status(403)
+        .json({ message: "You don't have permission to upload music" });
     }
 
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.role !== "artist") {
-            return res.status(403).json({ message: "You don't have permission to create an album" });
-        }
-        req.user = decoded;
-        next();
-    } catch (error) {
-        console.error("Authentication error:", error);
-        return res.status(500).json({ message: "Authentication failed" });
-    }
+    req.user = decoded;
+    return next();
+  } catch {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
 }
 
-module.exports = authArtist;
+export default authArtist;
